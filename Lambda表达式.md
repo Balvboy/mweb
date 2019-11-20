@@ -1,6 +1,8 @@
 # Java lambda
 众所周知Java是一门面对对象的变成语言，所以在Java中执行的lambda表达式实际上是被jvm在内部转换成了一个个函数式接口（FunctionalInterface）的实现来进行处理。
 
+[toc]
+
 ## 函数式接口
 在Java1.8之前，很多的api中就已经出现了基于回调的编程方式。比如下面的代码
 ```java
@@ -67,23 +69,17 @@ interface Foo {
 }
 
 ```
+参考:[Functional Interface](https://docs.oracle.com/javase/specs/jls/se8/html/jls-9.html#jls-9.8)
+
+### @FunctionalInterface注解
+如果添加了这个注释，编译器就会验证该接口是否满足函数式接口的要求，如果这个接口不满足要求，就会给出错误提示。
+所以这个注解起到的作用是强制性校验，和进行标识。
 
 
-## FunctionalInterface注解
+## Java为什么使用函数式接口来实现lambda
 
 
-函数式接口是一个定义，只要满足这个定义的接口都能够被称为函数式接口。添加这个注释的作用是要求编译器按照函数式接口的定义来校验这个接口，如果不满足则给出错误提示。
-
-1. 接口中只能有包含一个abstract方法（排除接口中重写的Object的public方法）
-2. 不能重写Object中非public的方法
-
-可以参考Java语言规范中给出的几个例子
-[Functional Interface](https://docs.oracle.com/javase/specs/jls/se8/html/jls-9.html#jls-9.8)
-
-
-
-
-## 常见的FunctionalInterface
+## 常见的函数式接口
 Runnable
 Supplier
 Consumer
