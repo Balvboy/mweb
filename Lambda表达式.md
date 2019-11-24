@@ -77,10 +77,11 @@ interface Foo {
 
 
 ## Java为什么使用函数式接口来实现lambda
+实现函数化编程的另一种方案是引入一种新的函数类型，`箭头`类型。但是这种改动会对现有的Java系统引入二外的复杂度，并造成一些代码风格的分歧。所以决定依赖函数式接口来实现lambda。这样既能和现有的Java系统保持统一，而且也可以让现有的一些满足函数式接口的接口，直接使用lambda。
 
 
 ## 常见的函数式接口
-Runnable
+Runnable(虽然没有biao)
 Supplier
 Consumer
 
