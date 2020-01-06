@@ -86,22 +86,64 @@ interface Foo {
 * Callable
 
 除此之外，Java SE 8中增加了一个新的包：java.util.function，它里面包含了常用的函数式接口，例如：
-* Predicate<T>——接收 T 并返回 boolean
-* Consumer<T>——接收 T，不返回值
-* Function<T, R>——接收 T，返回 R
-* Supplier<T>——提供 T 对象（例如工厂），不接收值
-* UnaryOperator<T>——接收 T 对象，返回 T
-* BinaryOperator<T>——接收两个 T，返回 T
+```
+* Predicate<T> ——接收 T 并返回 boolean
+* Consumer<T> ——接收 T，不返回值
+* Function<T, R> ——接收 T，返回 R
+* Supplier<T> ——提供 T 对象（例如工厂），不接收值
+* UnaryOperator<T> ——接收 T 对象，返回 T
+* BinaryOperator<> ——接收两个 T，返回 T
+```
+
 
 ## lambda表达式语法
+通过上面的内容我们可以知道，lambda表达式是必须要依赖于函数式接口的。只有当一个方法的参数是函数式接口的时候，我们才可以把它写成lambda表达式的形式。下面举一个我们很熟悉的例子来说明一下。
+我们平时开启一个线程的写法
+```
+new Thread（new Runnable(){
+    public void run(){
+        System.out.println("xxx");
+    }
+}）.start();
+```
+Thread的其中一个构造方法是传入一个Runnable接口，而正好Runnable接口是一个函数式接口，所以我们就可以用lambda表达式简化上面的写法
+```
+new Thread(()->System.out.println("xxx")).start();
+```
+
+
 lambda的基本语法是
-```
-(参数列表) -> {函数体}
-```
+> (参数列表) -> {函数体} 
+
+`首先要说明一下，下面的每一个表达式，都会对应着一个确定的函数式接口，也就是说需要先有函数式接口，然后我们才能根据函数式接口要求写出lambda表达式语法，然后再根据表达式的语法的规则对表达式进行适当的简化`
 
 下面我们通过举例来说明一下
 ```
-(int x, int y) -> x + y
+(int x, int y) -> {return x + y ;};
+```
+上面的这个表达式成立的条件是，需要存在一个函数式接口拥有一个接收2个int的参数，然后返回一个int的方法。
+我们通过IDE的提取变量的方式，发现IDE为我们找到了下面这个函数式接口。这个函数式接口是Jdk为我们提供的。
+```
+@FunctionalInterface
+public interface IntBinaryOperator {
+
+    /**
+     * Applies this operator to the given operands.
+     *
+     * @param left the first operand
+     * @param right the second operand
+     * @return the operator result
+     */
+    int applyAsInt(int left, int right);
+}
+
+```
+
+
+
+```
+(int x, int y) -> x + y ;
+(x , y) -> x + y ;
 ```
 这个lambda表达式接收两个int类型的参数，然后返回这两个参数的和
 
