@@ -95,7 +95,6 @@ interface Foo {
 * BinaryOperator<> ——接收两个 T，返回 T
 ```
 
-
 ## lambda表达式语法
 通过上面的内容我们可以知道，lambda表达式是必须要依赖于函数式接口的。只有当一个方法的参数是函数式接口的时候，我们才可以把它写成lambda表达式的形式。下面举一个我们很熟悉的例子来说明一下。
 我们平时开启一个线程的写法
@@ -112,55 +111,48 @@ new Thread(()->System.out.println("xxx")).start();
 ```
 
 
-lambda的基本语法是
+### lambda的基本语法
 > (参数列表) -> {函数体} 
+* 一个 Lambda 表达式可以有零个或多个参数
+* 如果表达式的参数可以推导，那么参数列表中的类型可以省略
+* 如果只有一个参数，并且参数类型可以推导，则圆括号（）可以省略
+* 如果 Lambda 函数体的主体只有一条语句，花括号{}可省略
+* 函数体既可以是一个表达式，也可以是一个语句块，如果是表达式的话，表达式会被执行然后返回执行结果。(也就是说默认返回这条表达式的执行结果)
 
-`首先要说明一下，下面的每一个表达式，都会对应着一个确定的函数式接口，也就是说需要先有函数式接口，然后我们才能根据函数式接口要求写出lambda表达式语法，然后再根据表达式的语法的规则对表达式进行适当的简化`
-
-下面我们通过举例来说明一下
+下面我们通过举例来说明一下;
+我们通过lambda表达式创建一个简单的比较器
 ```
-(int x, int y) -> {return x + y ;};
+Comparator<Integer> c = (Integer a, Integer b) -> {return a - b};
 ```
-上面的这个表达式成立的条件是，需要存在一个函数式接口拥有一个接收2个int的参数，然后返回一个int的方法。
-我们通过IDE的提取变量的方式，发现IDE为我们找到了下面这个函数式接口。这个函数式接口是Jdk为我们提供的。
+因为声明时指定了Integer的泛型，所以参数列表中的Integer是可以推导出来的,并且主体只有一条语句，并且有返回值。所以这个lambda可以简化为
 ```
-@FunctionalInterface
-public interface IntBinaryOperator {
-
-    /**
-     * Applies this operator to the given operands.
-     *
-     * @param left the first operand
-     * @param right the second operand
-     * @return the operator result
-     */
-    int applyAsInt(int left, int right);
-}
-
+Comparator<Integer> c = (a, b) -> a - b;
 ```
 
-
-
+## lambda的目标类型
+我们知道lambda表达式的类型，都是函数式接口。在程序的执行过程中，大多数的lambda表达式的类型都是被推导出来的。
+比如在下面代码中
 ```
-(int x, int y) -> x + y ;
-(x , y) -> x + y ;
+new Thread(()->System.out.println("xxx")).start();
 ```
-这个lambda表达式接收两个int类型的参数，然后返回这两个参数的和
+lambda表达式`()->System.out.println("xxx")`的类型是Runnable。
+所以也会有同样的lambda表达式在不同的上下文代码中有不同的类型。
+```
+Callable<String> c = () -> "done";
+PrivilegedAction<String> a = () -> "done";
+```
+
+每当我们在代码中使用lambda表达式的时候，编译器都会进行检查。
+* 检查lambda的参数和函数式接口方法的参数是否一致
+* 返回值是否兼容
+* 抛出的异常是否类型兼容
 
 ## 双冒号操作符
 双冒号`::`是在lambda中很常用的一个操作符。
 我认为这个操作符和lambda表达式的作用都是，帮助我们快速的将一个操作转化成为Java的FunctionalInterface
 
-举一个我们常见的例子
-```java
-execute( 
-    () -> System.out.println("Worker invoked using Lambda expression") 
-);
-```
-我们能这么写的原因是，上面的lambda表达式其实是返回了一个Runable对象。
-而Runnable这个接口就是我们接触最多的 FunctionalInterface。
 
-## 
+
 
 
 
