@@ -149,7 +149,9 @@ PrivilegedAction<String> a = () -> "done";
 
 ## 双冒号操作符
 双冒号`::`是在lambda中很常用的一个操作符。
-我认为这个操作符和lambda表达式的作用都是，帮助我们快速的将一个操作转化成为Java的FunctionalInterface
+这个操作符的作用是快速的将一个方法操作转化成为函数式接口
+举例来说
+
 
 
 
