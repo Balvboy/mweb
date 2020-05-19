@@ -37,6 +37,9 @@ HTTPS的安全性是建立在密码学的基础之上的，有很多算法起到
 9. 服务器端收到Pre-Master-Secret的加密数据，因为是使用它的公钥加密的，所以可以使用私钥解密得到Pre-Master-Secret。
 10. 这时候客户端和服务端都同时知道了，RNc、RNs、Pre-Master-Secret这三个随机数，然后客户端和服务器端使用相同的PRF算法计算得到一个Master-Secret。然后可以从Master-Secret中再生成作为最终客户端和服务器端消息对称加密的秘钥，和对消息进行认证的MAC秘钥。
 
+参考:[TLS协议](https://zhangbuhuai.com/post/tls.html)
+[TLS RFC](https://tools.ietf.org/html/rfc5246)
+
 ### 2.Pre-Master-Secret
 Pre-Master-Secret前两个字节是TLS的版本号，这是一个比较重要的用来核对握手数据的版本号，因为在Client Hello阶段，客户端会发送一份加密套件列表和当前支持的SSL/TLS的版本号给服务端，而且是使用明文传送的，如果握手的数据包被破解之后，攻击者很有可能串改数据包，选择一个安全性较低的加密套件和版本给服务端，从而对数据进行破解。
 所以，服务端需要对密文中解密出来对的Pre-Master-Secret中的版本号跟之前Client Hello阶段的版本号进行对比，如果版本号变低，则说明被篡改，则立即停止发送任何消息。
@@ -44,7 +47,7 @@ Pre-Master-Secret前两个字节是TLS的版本号，这是一个比较重要的
 参考：[pre-master secret ](http://www.linuxidc.com/Linux/2016-05/131147.htm)
 
 ### 3.Master-Secret
-客户端和服务端在生成Master-Secret的同时，还会生成下面6个秘钥，分别用于MAC算法和加解密算法。
+客户端和服务端在生成Master-Secret的之后，会把Master-Secret作为PRF的参数，继续运算，最终得到下面6个秘钥，分别用于MAC算法和加解密算法。
 
 |秘钥名称|秘钥作用|
 | --- | --- |
@@ -55,7 +58,21 @@ Pre-Master-Secret前两个字节是TLS的版本号，这是一个比较重要的
 |client write IV|初始化向量，运用于分组对称加密|
 |server write IV|初始化向量，运用于分组对称加密|
 
+参考: [TLS 中的密钥计算](https://halfrost.com/https-key-cipher/)
+
 ### 4.PRF算法
+
+PRF表示（Pseudo-random Function）伪随机函数
+
+Master-secret和最终的6个秘钥都是依靠PRF来生成的。
+
+PRF是利用hash函数来实现，然后依赖递归可以生成无限长度的序列。具体使用哪种hash算吗，在TLS1.2之后需要的密码学套件中指定。
+
+然后master-secret和6个秘钥只需要PRF生成满足他们所需要的长度即可。
+
+比如Master-Secret的长度一直都是48位。
+
+参考: [TLS 中的密钥计算](https://halfrost.com/https-key-cipher/)
 
 ### 5.双向认证
 其实我们日常访问的绝大多数网站，都是单向认证的(也就是说并没有上面流程中的3、4、5、6步骤)，这里为例展示HTTPS的完整交互流程，所以分析的是双向认证。
@@ -75,13 +92,15 @@ ssl_verify_client on;
 
 下面来分析一个密码学套件的名称，来解释一下它包含的意思
 
-`TLS_DHE_RSA_WITH_AES_256_CBC_SHA`
+![15898756214901.jpg](https://upload-images.jianshu.io/upload_images/2829175-f74ad90f558891d0.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+`TLS_DHE_RSA_WITH_AES_256_CBC_SHA226`
 * WITH前面表示使用的非对称加密算法，WITH后面表示使用的对称加密和完整性校验算法
 
 1. TLS:表示TLS协议，如果未来TLS改名，这个名字可能会变，否则会一直是这个名字
 2. DHE_RSA:这里又两个算法，表示第一个是约定密钥交换的算法，第二个是约定证书的验证算法。如果只有一个，表示这两中操作都是用同一个算法。
 3. AES_256_CBC:指的是AES这种对称加密算法的256位算法的CBC模式，AES本身是一类对称加密算法的统称，实际的使用时要指定位数和计算模式，CBC就是一种基于块的计算模式。
-4. SHA:表示用来校验数据完整性生成MAC，使用的算法。
+4. SHA:表示用来校验数据完整性生成MAC，使用的算法，在TLS1.2之后也表示PRF算法使用的算法。
 
 除了这种比较好理解的密码学套件，还有见到一些比较奇怪的，比如
 `ALL:!EXPORT:!LOW:!aNULL:!SSLv2`
@@ -91,6 +110,11 @@ ssl_verify_client on;
 * !LOW:表示排除掉标记为密码强度比较低的算法。
 * !aNULL:表示排除不提供身份验证算法的套件。
 * !SSLv2:表示排除所有SSLv2的套件。
+
+大家可以使用`openssl ciphers xxx`命令查看套件表达式，棘突所包含的密码学套件
+
+![15898713164120.jpg](https://upload-images.jianshu.io/upload_images/2829175-6f92598a9386a708.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
 
 参考: [密码学套件](https://zhuanlan.zhihu.com/p/37239435)
 参考: [密码学套件表达式](https://www.openssl.org/docs/man1.0.2/man1/ciphers.html)
@@ -104,12 +128,16 @@ HTTPS中算法，根据算法的用途可以分为几大类
 * 信息摘要/签名算法 - 对传递的信息摘要，确保信息在传递过程中不会被篡改
 
 ### 1.加密算法
+
 加密算法基本可以分为两种 对称加密和非对称加密
+
 #### 对称加密 
+
 顾名思义就是加密和解密都是用一个同样的秘钥，它的优点就行加解密的速度很快，缺点就是尤其需要注意秘钥的传输，不能泄露。
 包含的算法有 AES DES RC4等，常用的是AES
 
 #### 非对称加密-RSA
+
 非对称加密有一对秘钥公钥和私钥。使用公钥加密，然后使用私钥解密。公钥可以公开的发送给任何人。使用公钥加密的内容，只有私钥可以解开。安全性比对称加密大大提高。缺点是和对称加密相比速度较慢，加解密耗费的计算资源较多。
 
 这里稍微说一下RSA算法
@@ -119,6 +147,7 @@ RSA算法可以说是非对称加密的代表算法了，算了还是不说了�
 [RSA算法原理2](http://www.ruanyifeng.com/blog/2013/07/rsa_algorithm_part_two.html)
 
 ### 2.秘钥传递算法
+
 在HTTPS中比较常用的有RSA和DH算法。
 对你没看错还是RSA，因为RSA非对称加密的特性，非常适合用来传递秘钥，而RSA在HTTPS中也正是承担的这一个关键作用。
 
@@ -130,6 +159,7 @@ DH算法流程
 5. Bob将G^B mod P 发送给A
 6. Alice用Bob发过来的数计算A次方，并求mod P （G^A*B mod P）
 7. Bob用Alice发过来的数计算B次方并求mod P（G^A*B mod P）
+
 
 DH算法和RSA把数据加密然后进行传输不同，它的算法过程更像是客户端和服务器端协商出来的一个秘钥。
 看到DH的算法和RSA的算法，感觉都是运用了质数和模运算相关的数学原理和公式，他们之间应该也是有一定的关联和关系。(后悔没有好好学数学呀)
@@ -191,6 +221,31 @@ MAC只是定义了一个概念---使用一个key，给一段消息生成一个�
 
 我们看到越是高等级的证书，审核的严格程度也就越高。并在浏览器中会有一定程度的展示，也会给用户一种更为安全的感觉，当然价格也是更加昂贵。
 
+## HTTPS证书内容和结构
+![15898733815306.jpg](https://upload-images.jianshu.io/upload_images/2829175-c8374a8405f5eac8.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+* Certificate
+    * Version Number（证书版本）
+    * Serial Number(序列号)
+    * Signature Algorithm ID（该和客户端使用的签名算法）
+    * Issuer Name(证书签发者 DN)
+    * Validity period(有效期)
+        * Not Before(生效开始时间)
+        * Not After(有效结束时间)
+    * Subject name(证书使用者)
+    * Subject Public Key Info(证书)
+        * Public Key Algorithm(公钥算法)
+        * Subject Public Key(证书公钥)
+    * Issuer Unique Identifier (optional)(签发者唯一身份信息，可选)
+    * Subject Unique Identifier (optional)(使用者唯一身份信息，可选)
+    * Extensions (optional)(扩展字段)
+        * ...
+    * Signature(CA机构对证书的签名)
+
+
+参考 [X.509 wiki](https://en.wikipedia.org/wiki/X.509)
+[X.509 数字证书的基本原理及应用](https://zhuanlan.zhihu.com/p/36832100)
+
 ## 如何获得HTTPS证书
 简单来说获的HTTPS证书有两种方式
 * 在有CA认证的机构申请
@@ -198,6 +253,7 @@ MAC只是定义了一个概念---使用一个key，给一段消息生成一个�
 
 ### 1.通过CA机构申请
 申请CA机构认证的证书大致需要以下步骤
+
 #### 1.1 生成CSR(Certificate Signing Request)文件
 主要方式有两种，本地生成和在线生成
 1 通过openssl命令本地生成CSR
@@ -260,20 +316,47 @@ CA机构签名完，并发送给我们之后，我们就能够把证书部署在
 
 ## 证书认证链
 
-- 验证流程
-> 1. 我们知道CA机构在签发证书的时候，都会使用自己的私钥对证书进行签名
-证书里的签名算法字段 sha256RSA 表示，CA机构使用sha256对证书进行摘要，然后使用RSA算法对摘要进行私钥签名，而我们也知道RSA算法中，使用私钥签名之后，只有公钥才能进行验签。
->2. 如果我们使用的是购买的证书，那么很有可能，颁发这个证书的CA机构的公钥已经预置在操作系统中。这样浏览器就可以使用CA机构的公钥对服务器的证书进行验签。确定这个证书是不是由正规的CA机构颁发的。验签之后得到CA机构使用sha256得到的证书摘要，然后客户端再使用sha256对证书内容进行一次摘要，如果得到的值和验签之后得到的摘要值相同，则表示证书没有被修改过。
->3. 如果验证通过，就会显示上面的安全字样，如果服务器购买的证书是更高级的EV类型，就会显示出购买证书的时候提供的企业名称。如果没有验证通过，就会显示不安全的提示。
-
-![证书内容](http://upload-images.jianshu.io/upload_images/2829175-fcc431ce19db1379.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+上面的HTTPS流程中提到，客户端收到服务端证书之后，会进行验证。HTTPS证书的认证是链状的，每一个证书都需要它上级的证书来验证是否有效。
 
 
-![证书内容](http://upload-images.jianshu.io/upload_images/2829175-d399116519dbda05.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+### 链式结构
+
+目前我们常见的证书链中一般分为3级。不过中间证书这部分，也有可能又分为多级。但是也是保持这样的链式结构。
+
+* 根证书(Root CA)
+    * 中介(中间)证书(Intermediates)
+        * 终端实体证书(End-user)
+ 
+### 认证证书
+ 我们以wiki百科的证书链来举例
+![image.png](https://upload-images.jianshu.io/upload_images/2829175-bb5533a3c347701c.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+当我们和wiki的服务器建立HTTPS连接的时候，会获得wiki的(End-User)证书(后面简称为WK证书)。
+
+那么我们如何验证这个WK证书是安全的，或者说没有被篡改的呢？
+
+因为CA机构在签发WK证书的时候，会使用自己的私钥，使用WK证书中指定的签名算法对用WK证书签名，并把签名生成的信息放到WK证书中。
+
+![image.png](https://upload-images.jianshu.io/upload_images/2829175-ba8bbeade4e457a1.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+所以我们只需要，使用CA证书中的公钥来验证一下签名。
+
+那么现在有一个问题就是，如何获取WK证书的上一级证书呢？
+这里两种可能
+1. 这个证书已经存在于你的电脑中了，直接使用就可以
+2. 你的电脑中还没有这个证书，需要下载(这里有个疑问就是，根据什么区下载这个证书，很有可能是签发者的DN，但是查了很多资料，并没有找到证据)
+
+拿到CA证书之后，就能够使用CA证书中的公钥对WK证书验签了。
+
+一样的道理，CA证书的有效性需要CA的上级证书，也就是Root证书来证明。验证的过程是基本一致的。
+
+
+![证书认证链](https://upload-images.jianshu.io/upload_images/2829175-a11ecbb68096bb64.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+
+### 证书吊销列表
+
 
 1. 客户端收到证书之后会首先会进行验证
 2. ![CA机构进行签名](http://upload-images.jianshu.io/upload_images/2829175-06f817d855a63dd7.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-
-
-
-
