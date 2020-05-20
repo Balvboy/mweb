@@ -148,23 +148,17 @@ RSA算法可以说是非对称加密的代表算法了，算了还是不说了�
 
 ### 2.秘钥传递算法
 
-在HTTPS中比较常用的有RSA和DH算法。
+在HTTPS中比较常用的有RSA、DH、ECDHE算法。
 对你没看错还是RSA，因为RSA非对称加密的特性，非常适合用来传递秘钥，而RSA在HTTPS中也正是承担的这一个关键作用。
 
-DH算法流程
-1. Alice 像 Bob 发送两个质数P和G。p是非常大的质数，g是生成元。
-2. Alice生成一个随机数A。A是1~p-2之间的整数。这个数只能Alice知道。
-3. Bob生成一个随机数B。B是一个1~p-2之间的整数。这个是只能Bob知道。
-4. Alice将G^A mod P 发送给B
-5. Bob将G^B mod P 发送给A
-6. Alice用Bob发过来的数计算A次方，并求mod P （G^A*B mod P）
-7. Bob用Alice发过来的数计算B次方并求mod P（G^A*B mod P）
+具体的算法就不在这里展开了，感兴趣的大家可以下面的wiki中了解一下。
 
+因为这些算法都用到了数论的一些知识，我自己也是似懂非懂。但是他们有一个共同点就是都是运用了质数和模运算相关的数学原理和公式，感觉他们之间应该也是有一定的关联和关系。(后悔没有好好学数学呀)
 
-DH算法和RSA把数据加密然后进行传输不同，它的算法过程更像是客户端和服务器端协商出来的一个秘钥。
-看到DH的算法和RSA的算法，感觉都是运用了质数和模运算相关的数学原理和公式，他们之间应该也是有一定的关联和关系。(后悔没有好好学数学呀)
-
-参考：[RSA和DH算法](https://blog.csdn.net/u013066244/article/details/79364011?utm_source=blogxgwz4)
+参考：
+[RSA和DH算法](https://blog.csdn.net/u013066244/article/details/79364011?utm_source=blogxgwz4)
+[ECDHE-wiki](https://zh.wikipedia.org/wiki/%E6%A9%A2%E5%9C%93%E6%9B%B2%E7%B7%9A%E8%BF%AA%E8%8F%B2-%E8%B5%AB%E7%88%BE%E6%9B%BC%E9%87%91%E9%91%B0%E4%BA%A4%E6%8F%9B)
+[DH-wiki](https://zh.wikipedia.org/wiki/%E8%BF%AA%E8%8F%B2-%E8%B5%AB%E7%88%BE%E6%9B%BC%E5%AF%86%E9%91%B0%E4%BA%A4%E6%8F%9B)
 
 ### 3.摘要/签名算法
 HTTPS中常见的有MD5、SHA256、MAC、HMAC等，下面主要说明一下这些算法的区别和联系。
@@ -245,6 +239,7 @@ MAC只是定义了一个概念---使用一个key，给一段消息生成一个�
 
 参考 [X.509 wiki](https://en.wikipedia.org/wiki/X.509)
 [X.509 数字证书的基本原理及应用](https://zhuanlan.zhihu.com/p/36832100)
+[X.509证书的读取与解释](https://blog.csdn.net/dickdick111/article/details/84931413)
 
 ## 如何获得HTTPS证书
 简单来说获的HTTPS证书有两种方式
@@ -318,8 +313,6 @@ CA机构签名完，并发送给我们之后，我们就能够把证书部署在
 
 上面的HTTPS流程中提到，客户端收到服务端证书之后，会进行验证。HTTPS证书的认证是链状的，每一个证书都需要它上级的证书来验证是否有效。
 
-
-
 ### 链式结构
 
 目前我们常见的证书链中一般分为3级。不过中间证书这部分，也有可能又分为多级。但是也是保持这样的链式结构。
@@ -351,12 +344,21 @@ CA机构签名完，并发送给我们之后，我们就能够把证书部署在
 
 一样的道理，CA证书的有效性需要CA的上级证书，也就是Root证书来证明。验证的过程是基本一致的。
 
-
 ![证书认证链](https://upload-images.jianshu.io/upload_images/2829175-a11ecbb68096bb64.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
+参考:
+[HTTPS 精读之 TLS 证书校验](https://zhuanlan.zhihu.com/p/30655259)
+[证书有效性验证、根证书](https://blog.csdn.net/hqy1719239337/article/details/88891118)
 
 ### 证书吊销列表
 
 
-1. 客户端收到证书之后会首先会进行验证
-2. ![CA机构进行签名](http://upload-images.jianshu.io/upload_images/2829175-06f817d855a63dd7.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+![CA机构进行签名](http://upload-images.jianshu.io/upload_images/2829175-06f817d855a63dd7.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+
+
+# 参考
+[HTTPS 基本过程](https://hit-alibaba.github.io/interview/basic/network/HTTPS.html)
+[你不在意的证书吊销机制](https://www.anquanke.com/post/id/183339)
+[TLS 协议](https://zhangbuhuai.com/post/tls.html)
+[数字证书](https://blog.cnbluebox.com/blog/2014/03/24/shu-zi-zheng-shu/)
