@@ -116,8 +116,9 @@ ssl_verify_client on;
 ![15898713164120.jpg](https://upload-images.jianshu.io/upload_images/2829175-6f92598a9386a708.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
 
-参考: [密码学套件](https://zhuanlan.zhihu.com/p/37239435)
-参考: [密码学套件表达式](https://www.openssl.org/docs/man1.0.2/man1/ciphers.html)
+参考: 
+[密码学套件](https://zhuanlan.zhihu.com/p/37239435)
+[密码学套件表达式](https://www.openssl.org/docs/man1.0.2/man1/ciphers.html)
 ## HTTPS中的算法
 除了了解HTTPS的交互流程，HTTPS中使用的算法及算法的作用，也是我们必须要了解的一部分。
 下面会按照算法的作用进行分类，并简单的介绍其中比较常见算法的作用，单并不会对算法的原理做过多的说明(主要是我也弄不明白)，会把相关的讲解原理的文章链接提供出来，大家有兴趣的可以自行去了解。
@@ -140,8 +141,11 @@ HTTPS中算法，根据算法的用途可以分为几大类
 
 非对称加密有一对秘钥公钥和私钥。使用公钥加密，然后使用私钥解密。公钥可以公开的发送给任何人。使用公钥加密的内容，只有私钥可以解开。安全性比对称加密大大提高。缺点是和对称加密相比速度较慢，加解密耗费的计算资源较多。
 
-这里稍微说一下RSA算法
-RSA算法可以说是非对称加密的代表算法了，算了还是不说了，先把其他的写完吧。
+这里我们先只需要了解RSA之所以安全的原因是，大整数的因数分解，是一件非常困难的事情。目前，除了暴力破解，还没有发现别的有效方法。
+
+所以这个大整数越大，RSA被破解的难度也就越高。
+
+具体的算法可以了解下面的两篇文章。
 
 [RSA算法原理1](https://www.ruanyifeng.com/blog/2013/06/rsa_algorithm_part_one.html)
 [RSA算法原理2](http://www.ruanyifeng.com/blog/2013/07/rsa_algorithm_part_two.html)
@@ -275,9 +279,11 @@ newkey rsa:2048 指定私钥类型和长度，
 #### 1.2 CA机构对证书签名
 接下来就需要按照CA机构的要求，和想要申请的证书类型，提交相关材料。
 
-CA收到CSR并验证相关材料，并审核通过之后。需要进行的很重要的一个步骤就是:`使用CA机构的私钥对提供证书中的内容进行签名`，并生成一段数据作为证书的内容保存在证书中。
+CA收到CSR并验证相关材料，并审核通过之后。需要进行的很重要的一个步骤就是:`使用CA机构的私钥对提供证书中的内容进行签名`，并把签名的结构存放在证书的数字签名部分。
 
 CA机构签名完，并发送给我们之后，我们就能够把证书部署在我们的服务器中了。
+
+![CA机构进行签名](http://upload-images.jianshu.io/upload_images/2829175-06f817d855a63dd7.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
 ### 2.自己生成证书
 参考 [自己生成HTTPS证书](https://www.barretlee.com/blog/2015/10/05/how-to-build-a-https-server/)
@@ -321,19 +327,38 @@ CA机构签名完，并发送给我们之后，我们就能够把证书部署在
     * 中介(中间)证书(Intermediates)
         * 终端实体证书(End-user)
  
-### 认证证书
+ 终端证书的签发者是中间证书。
+ 中间证书的签发者是上级中间或者根证书。
+ 根证书的签发者是他自己。
+ 
+ ![image.png](https://upload-images.jianshu.io/upload_images/2829175-ce71e53234ac73db.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+HTTPS的证书链，是一个自顶向下的信任链，每一个证书都需要它的上级证书来验证有效。所以根证书的作用就尤为重要，如果系统根证书被篡改，系统的安全性就受到威胁。
+
+根证书一般是通过系统，或者浏览器内置到我们的电脑的中的。系统更新或者浏览器更新的时候，也有可能会添加新的根证书。
+
+所以不要轻易的信任根证书，除非你是开发者，了解自己的所作所为。
+
+参考:
+[数字证书](https://blog.cnbluebox.com/blog/2014/03/24/shu-zi-zheng-shu/)
+ 
+### 验证证书
  我们以wiki百科的证书链来举例
 ![image.png](https://upload-images.jianshu.io/upload_images/2829175-bb5533a3c347701c.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
 当我们和wiki的服务器建立HTTPS连接的时候，会获得wiki的(End-User)证书(后面简称为WK证书)。
 
-那么我们如何验证这个WK证书是安全的，或者说没有被篡改的呢？
+服务器获得WK证书后，会用下面的几个方式来验证证书。
 
-因为CA机构在签发WK证书的时候，会使用自己的私钥，使用WK证书中指定的签名算法对用WK证书签名，并把签名生成的信息放到WK证书中。
+#### 1.证书有效性时间验证
+CA在颁发证书时，都为每个证书设定了有效期，包括开始时间与结束时间。系统当前时间不在证书起止时间的话，都认为证书是无效的。
+
+#### 2.证书完整性验证
+上面证书链的时候说到每个证书需要他的上级证书来确保证书的有效性。这个确保的方式就是数字签名。
 
 ![image.png](https://upload-images.jianshu.io/upload_images/2829175-ba8bbeade4e457a1.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-所以我们只需要，使用CA证书中的公钥来验证一下签名。
+所以我们只需要，使用CA证书中的公钥和对应的签名算法来验证一下签名，就能够确认证书的有效性。
 
 那么现在有一个问题就是，如何获取WK证书的上一级证书呢？
 这里两种可能
@@ -350,15 +375,58 @@ CA机构签名完，并发送给我们之后，我们就能够把证书部署在
 [HTTPS 精读之 TLS 证书校验](https://zhuanlan.zhihu.com/p/30655259)
 [证书有效性验证、根证书](https://blog.csdn.net/hqy1719239337/article/details/88891118)
 
-### 证书吊销列表
+#### 3.IP/域名验证
+在申请域名的时候，都会指定证书所针对的域名。所以这里就是验证，当前请求的域名，是否在这个证书所包含的域名列表中。
+
+![image.png](https://upload-images.jianshu.io/upload_images/2829175-8a40041a8ae3766b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+证书里面的域名范围通常使用通配符来表示。
+但是以*.example.com的二级域名范围就不能包含a.b.example.com这个三级域名。
+
+#### 4.证书吊销验证
+
+浏览器获取到服务器证书后，需要判断该证书是不是已经被CA机构吊销。如果已经吊销需要浏览器给出提示。
+
+![image.png](https://upload-images.jianshu.io/upload_images/2829175-b3dc8dd9b4c0ee8e.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+具体的吊销验证的策略就不在这里展开了，感兴趣的可以查看下面的文章，讲的很详细。
 
 
-![CA机构进行签名](http://upload-images.jianshu.io/upload_images/2829175-06f817d855a63dd7.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+参考：
+[你不在意的证书吊销机制](https://www.anquanke.com/post/id/183339)
+[PKI体系中的证书吊销](https://wooyun.js.org/drops/SSL%E5%8D%8F%E8%AE%AE%E5%AE%89%E5%85%A8%E7%B3%BB%E5%88%97%EF%BC%9APKI%E4%BD%93%E7%B3%BB%E4%B8%AD%E7%9A%84%E8%AF%81%E4%B9%A6%E5%90%8A%E9%94%80.html)
 
+
+# 总结
+HTTPS的相关总结就先到这里，不知道有没有解决大家的疑问。如果有疑问或者问题，欢迎大家在评论区继续沟通。
 
 
 # 参考
 [HTTPS 基本过程](https://hit-alibaba.github.io/interview/basic/network/HTTPS.html)
-[你不在意的证书吊销机制](https://www.anquanke.com/post/id/183339)
 [TLS 协议](https://zhangbuhuai.com/post/tls.html)
 [数字证书](https://blog.cnbluebox.com/blog/2014/03/24/shu-zi-zheng-shu/)
+[你不在意的证书吊销机制](https://www.anquanke.com/post/id/183339)
+[PKI体系中的证书吊销](https://wooyun.js.org/drops/SSL%E5%8D%8F%E8%AE%AE%E5%AE%89%E5%85%A8%E7%B3%BB%E5%88%97%EF%BC%9APKI%E4%BD%93%E7%B3%BB%E4%B8%AD%E7%9A%84%E8%AF%81%E4%B9%A6%E5%90%8A%E9%94%80.html)
+[HTTPS 精读之 TLS 证书校验](https://zhuanlan.zhihu.com/p/30655259)
+[证书有效性验证、根证书](https://blog.csdn.net/hqy1719239337/article/details/88891118)
+[数字证书](https://blog.cnbluebox.com/blog/2014/03/24/shu-zi-zheng-shu/)
+[中间人攻击-Wiki](https://zh.wikipedia.org/wiki/%E4%B8%AD%E9%97%B4%E4%BA%BA%E6%94%BB%E5%87%BB)
+[自己生成HTTPS证书](https://www.barretlee.com/blog/2015/10/05/how-to-build-a-https-server/)
+[在线CSR申请](https://www.chinassl.net/ssltools/generator-csr.html)
+[X.509 wiki](https://en.wikipedia.org/wiki/X.509)
+[X.509 数字证书的基本原理及应用](https://zhuanlan.zhihu.com/p/36832100)
+[X.509证书的读取与解释](https://blog.csdn.net/dickdick111/article/details/84931413)
+[MAC-Wiki](https://zh.wikipedia.org/wiki/%E8%A8%8A%E6%81%AF%E9%91%91%E5%88%A5%E7%A2%BC)
+[Difference between MAC and HMAC?](https://crypto.stackexchange.com/questions/6523/what-is-the-difference-between-mac-and-hmac)
+[SHA算法家族](https://zh.wikipedia.org/wiki/SHA%E5%AE%B6%E6%97%8F)
+[RSA和DH算法](https://blog.csdn.net/u013066244/article/details/79364011?utm_source=blogxgwz4)
+[ECDHE-wiki](https://zh.wikipedia.org/wiki/%E6%A9%A2%E5%9C%93%E6%9B%B2%E7%B7%9A%E8%BF%AA%E8%8F%B2-%E8%B5%AB%E7%88%BE%E6%9B%BC%E9%87%91%E9%91%B0%E4%BA%A4%E6%8F%9B)
+[DH-wiki](https://zh.wikipedia.org/wiki/%E8%BF%AA%E8%8F%B2-%E8%B5%AB%E7%88%BE%E6%9B%BC%E5%AF%86%E9%91%B0%E4%BA%A4%E6%8F%9B)
+[RSA算法原理1](https://www.ruanyifeng.com/blog/2013/06/rsa_algorithm_part_one.html)
+[RSA算法原理2](http://www.ruanyifeng.com/blog/2013/07/rsa_algorithm_part_two.html)
+[密码学套件](https://zhuanlan.zhihu.com/p/37239435)
+[密码学套件表达式](https://www.openssl.org/docs/man1.0.2/man1/ciphers.html)
+[TLS 中的密钥计算](https://halfrost.com/https-key-cipher/)
+[pre-master secret ](http://www.linuxidc.com/Linux/2016-05/131147.htm)
+[TLS协议](https://zhangbuhuai.com/post/tls.html)
+[TLS RFC](https://tools.ietf.org/html/rfc5246)
