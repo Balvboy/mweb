@@ -111,7 +111,7 @@ ssl_verify_client on;
 * !aNULL:表示排除不提供身份验证算法的套件。
 * !SSLv2:表示排除所有SSLv2的套件。
 
-大家可以使用`openssl ciphers xxx`命令查看套件表达式，棘突所包含的密码学套件
+大家可以使用`openssl ciphers xxx`命令查看套件表达式，所包含的密码学套件
 
 ![15898713164120.jpg](https://upload-images.jianshu.io/upload_images/2829175-6f92598a9386a708.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
@@ -150,12 +150,18 @@ HTTPS中算法，根据算法的用途可以分为几大类
 [RSA算法原理1](https://www.ruanyifeng.com/blog/2013/06/rsa_algorithm_part_one.html)
 [RSA算法原理2](http://www.ruanyifeng.com/blog/2013/07/rsa_algorithm_part_two.html)
 
-### 2.秘钥传递算法
+### 2.秘钥交换算法
 
-在HTTPS中比较常用的有RSA、DH、ECDHE算法。
-对你没看错还是RSA，因为RSA非对称加密的特性，非常适合用来传递秘钥，而RSA在HTTPS中也正是承担的这一个关键作用。
+常见的秘钥交换算法有下面几种：
+* RSA：算法实现简单，诞生于 1977 年，历史悠久，经过了长时间的破解测试，安全性高。缺点就是需要比较大的素数（目前常用的是 2048 位）来保证安全强度，很消耗 CPU 运算资源。RSA 是目前唯一一个既能用于密钥交换又能用于证书签名的算法。
 
-具体的算法就不在这里展开了，感兴趣的大家可以下面的wiki中了解一下。
+* DH：diffie-hellman 密钥交换算法，诞生时间比较早（1977 年），但是 1999 年才公开。缺点是比较消耗 CPU 性能。
+
+* ECDHE：使用椭圆曲线（ECC）的 DH 算法，优点是能用较小的素数（256 位）实现 RSA 相同的安全等级。缺点是算法实现复杂，用于密钥交换的历史不长，没有经过长时间的安全攻击测试。
+
+* ECDH：不支持 PFS，安全性低，同时无法实现 false start。
+
+* DHE：不支持 ECC。非常消耗 CPU 资源 。
 
 因为这些算法都用到了数论的一些知识，我自己也是似懂非懂。但是他们有一个共同点就是都是运用了质数和模运算相关的数学原理和公式，感觉他们之间应该也是有一定的关联和关系。(后悔没有好好学数学呀)
 
@@ -163,6 +169,7 @@ HTTPS中算法，根据算法的用途可以分为几大类
 [RSA和DH算法](https://blog.csdn.net/u013066244/article/details/79364011?utm_source=blogxgwz4)
 [ECDHE-wiki](https://zh.wikipedia.org/wiki/%E6%A9%A2%E5%9C%93%E6%9B%B2%E7%B7%9A%E8%BF%AA%E8%8F%B2-%E8%B5%AB%E7%88%BE%E6%9B%BC%E9%87%91%E9%91%B0%E4%BA%A4%E6%8F%9B)
 [DH-wiki](https://zh.wikipedia.org/wiki/%E8%BF%AA%E8%8F%B2-%E8%B5%AB%E7%88%BE%E6%9B%BC%E5%AF%86%E9%91%B0%E4%BA%A4%E6%8F%9B)
+[Nginx SSL 性能优化](https://luckymrwang.github.io/2015/10/09/Nginx-SSL-%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/)
 
 ### 3.摘要/签名算法
 HTTPS中常见的有MD5、SHA256、MAC、HMAC等，下面主要说明一下这些算法的区别和联系。
@@ -389,9 +396,14 @@ CA在颁发证书时，都为每个证书设定了有效期，包括开始时间
 
 ![image.png](https://upload-images.jianshu.io/upload_images/2829175-b3dc8dd9b4c0ee8e.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-具体的吊销验证的策略就不在这里展开了，感兴趣的可以查看下面的文章，讲的很详细。
+这里只大概说一下证书的吊销校验主要分2中
+1. 通过CRL(Certificate Revocation List) 证书吊销列表
+    需要定时的去更新CA机构提供的CRL文件，这个里面记录了改CA机构下所有被吊销的证书。CRL目前正在被OCSP取代，因为CRL不及时，并且每个CRL文件，比较大，影响用户体验。
+2. 通过OCSP(Online Certificate Status Protocol) 在线证书状态协议
+    这是一个实时的通过证书的序列号去查询证书状态的协议，但是这个有一个问题是，因为每次建立HTTPS链接都需要请求这个接口，所以如果这个接口响应慢的话，十分影响用户的体验。所以需要浏览器这边有一个策略，就是如果在一定时间内OCSP没有响应，那怎么处理。
+    如果强依赖OCSP的话，会容易引起OCSP的单点故障。
 
-
+详细的胡啊
 参考：
 [你不在意的证书吊销机制](https://www.anquanke.com/post/id/183339)
 [PKI体系中的证书吊销](https://wooyun.js.org/drops/SSL%E5%8D%8F%E8%AE%AE%E5%AE%89%E5%85%A8%E7%B3%BB%E5%88%97%EF%BC%9APKI%E4%BD%93%E7%B3%BB%E4%B8%AD%E7%9A%84%E8%AF%81%E4%B9%A6%E5%90%8A%E9%94%80.html)
@@ -430,3 +442,4 @@ HTTPS的相关总结就先到这里，不知道有没有解决大家的疑问。
 [pre-master secret ](http://www.linuxidc.com/Linux/2016-05/131147.htm)
 [TLS协议](https://zhangbuhuai.com/post/tls.html)
 [TLS RFC](https://tools.ietf.org/html/rfc5246)
+[Nginx SSL 性能优化](https://luckymrwang.github.io/2015/10/09/Nginx-SSL-%E6%80%A7%E8%83%BD%E4%BC%98%E5%8C%96/)
