@@ -14,7 +14,8 @@ HTTPS的安全性是建立在密码学的基础之上的，有很多算法起到
 ## HTTPS的交互过程
 通过上面的描述，我们已经能大概知道HTTPS是使用加密算法在浏览器和服务器之前传递秘钥，然后再使用秘钥完成信息的加解密。所以这个秘钥是如何生成的，还有秘钥是如何在浏览器和服务器之间传递的就成了HTTPS的关键，下面我们来详细的了解一下这个过程。 
 
-![客户端与服务端交互](https://upload-images.jianshu.io/upload_images/2829175-b4a66afd059747b2.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240) 
+![客户端与服务端交互](media/Ssl_handshake_with_two_way_authentication_with_certificates.png)
+
 
 ### 1.交互流程 
 1. Client Hello 客户端（通常是浏览器）先向服务器发出加密通信的请求,请求大概中包括下面内容
