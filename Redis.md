@@ -53,40 +53,40 @@ server.initial_memory_usage = zmalloc_used_memory();
 从上面的描述可以看出BIO目前只包括一个操作，就是后台 close内核函数操作，因为这个操作牵扯到很重的文件IO，文件IO会严重阻塞redis-server，所以需要开辟线程来单独处理这些操作。
 
 ```c
-96  void bioInit(void) {
-97      pthread_attr_t attr;
-98      pthread_t thread;
-99      size_t stacksize;
-100      int j;
-101  
-102      /* Initialization of state vars and objects */
-103      for (j = 0; j < BIO_NUM_OPS; j++) {
-104          pthread_mutex_init(&bio_mutex[j],NULL);
-105          pthread_cond_init(&bio_newjob_cond[j],NULL);
-106          pthread_cond_init(&bio_step_cond[j],NULL);
-107          bio_jobs[j] = listCreate();
-108          bio_pending[j] = 0;
-109      }
-110  
-111      /* Set the stack size as by default it may be small in some system */
-112      pthread_attr_init(&attr);
-113      pthread_attr_getstacksize(&attr,&stacksize);
-114      if (!stacksize) stacksize = 1; /* The world is full of Solaris Fixes */
-115      while (stacksize < REDIS_THREAD_STACK_SIZE) stacksize *= 2;
-116      pthread_attr_setstacksize(&attr, stacksize);
-117  
-118      /* Ready to spawn our threads. We use the single argument the thread
-119       * function accepts in order to pass the job ID the thread is
-120       * responsible of. */
-121      for (j = 0; j < BIO_NUM_OPS; j++) { //循环创建bio线程
-122          void *arg = (void*)(unsigned long) j;
-123          if (pthread_create(&thread,&attr,bioProcessBackgroundJobs,arg) != 0) {
-124              serverLog(LL_WARNING,"Fatal: Can't initialize Background Jobs.");
-125              exit(1);
-126          }
-127          bio_threads[j] = thread;
-128      }
-129  }
+  void bioInit(void) {
+      pthread_attr_t attr;
+      pthread_t thread;
+      size_t stacksize;
+      int j;
+  
+      /* Initialization of state vars and objects */
+      for (j = 0; j < BIO_NUM_OPS; j++) {
+          pthread_mutex_init(&bio_mutex[j],NULL);
+          pthread_cond_init(&bio_newjob_cond[j],NULL);
+          pthread_cond_init(&bio_step_cond[j],NULL);
+          bio_jobs[j] = listCreate();
+          bio_pending[j] = 0;
+      }
+  
+      /* Set the stack size as by default it may be small in some system */
+      pthread_attr_init(&attr);
+      pthread_attr_getstacksize(&attr,&stacksize);
+      if (!stacksize) stacksize = 1; /* The world is full of Solaris Fixes */
+      while (stacksize < REDIS_THREAD_STACK_SIZE) stacksize *= 2;
+      pthread_attr_setstacksize(&attr, stacksize);
+  
+      /* Ready to spawn our threads. We use the single argument the thread
+       * function accepts in order to pass the job ID the thread is
+       * responsible of. */
+      for (j = 0; j < BIO_NUM_OPS; j++) { //循环创建bio线程
+          void *arg = (void*)(unsigned long) j;
+          if (pthread_create(&thread,&attr,bioProcessBackgroundJobs,arg) != 0) {
+              serverLog(LL_WARNING,"Fatal: Can't initialize Background Jobs.");
+              exit(1);
+          }
+          bio_threads[j] = thread;
+      }
+ }
 ```
 这个函数，从名字就可以看出它的主要功能是完成BIO的初始化操作，在源代码中我们找到了线程开辟操作，这里的思路是线程池，那么问题来了，BIO线程池中到底开辟几个线程呢？
 
@@ -99,41 +99,41 @@ server.initial_memory_usage = zmalloc_used_memory();
 
 ## 4. BIO线程执行的操作
 ```c
-171      while(1) {
-172          listNode *ln;
-173  
-174          /* The loop always starts with the lock hold. */
-175          if (listLength(bio_jobs[type]) == 0) {
-176              pthread_cond_wait(&bio_newjob_cond[type],&bio_mutex[type]);
-177              continue;
-178          }
-179          /* Pop the job from the queue. */
-180          ln = listFirst(bio_jobs[type]); //从任务队列中获取任务
-181          job = ln->value;
-182          /* It is now possible to unlock the background system as we know have
-183           * a stand alone job structure to process.*/
-184          pthread_mutex_unlock(&bio_mutex[type]);
-185  
-186          /* Process the job accordingly to its type. */
-187          if (type == BIO_CLOSE_FILE) { //文件关闭操作
-188              close((long)job->arg1);
-189          } else if (type == BIO_AOF_FSYNC) { //异步文件同步操作
-190              redis_fsync((long)job->arg1);
-191          } else if (type == BIO_LAZY_FREE) { //redis内存懒释放
-192              /* What we free changes depending on what arguments are set:
-193               * arg1 -> free the object at pointer.
-194               * arg2 & arg3 -> free two dictionaries (a Redis DB).
-195               * only arg3 -> free the skiplist. */
-196              if (job->arg1)
-197                  lazyfreeFreeObjectFromBioThread(job->arg1); //懒释放对象
-198              else if (job->arg2 && job->arg3)
-199                  lazyfreeFreeDatabaseFromBioThread(job->arg2,job->arg3);//懒释数据库
-200              else if (job->arg3)
-201                  lazyfreeFreeSlotsMapFromBioThread(job->arg3);//懒释放槽位型Map内存
-202          } else {
-203              serverPanic("Wrong job type in bioProcessBackgroundJobs().");
-204          }
-205          zfree(job);
+      while(1) {
+          listNode *ln;
+  
+          /* The loop always starts with the lock hold. */
+          if (listLength(bio_jobs[type]) == 0) {
+              pthread_cond_wait(&bio_newjob_cond[type],&bio_mutex[type]);
+              continue;
+          }
+          /* Pop the job from the queue. */
+          ln = listFirst(bio_jobs[type]); //从任务队列中获取任务
+          job = ln->value;
+          /* It is now possible to unlock the background system as we know have
+           * a stand alone job structure to process.*/
+          pthread_mutex_unlock(&bio_mutex[type]);
+  
+          /* Process the job accordingly to its type. */
+          if (type == BIO_CLOSE_FILE) { //文件关闭操作
+              close((long)job->arg1);
+          } else if (type == BIO_AOF_FSYNC) { //异步文件同步操作
+              redis_fsync((long)job->arg1);
+          } else if (type == BIO_LAZY_FREE) { //redis内存懒释放
+              /* What we free changes depending on what arguments are set:
+               * arg1 -> free the object at pointer.
+               * arg2 & arg3 -> free two dictionaries (a Redis DB).
+               * only arg3 -> free the skiplist. */
+              if (job->arg1)
+                  lazyfreeFreeObjectFromBioThread(job->arg1); //懒释放对象
+              else if (job->arg2 && job->arg3)
+                  lazyfreeFreeDatabaseFromBioThread(job->arg2,job->arg3);//懒释数据库
+              else if (job->arg3)
+                  lazyfreeFreeSlotsMapFromBioThread(job->arg3);//懒释放槽位型Map内存
+          } else {
+              serverPanic("Wrong job type in bioProcessBackgroundJobs().");
+          }
+          zfree(job);
 ```
 
 通过最初的现象，我们可以看出Redis-server开辟了四个线程，并通过源代码分析，我们可以看出后三个线程是BIO线程，这三个线程完成的功能是一样的，主要包括：从BIO任务队列中取出任务，文件描述符关闭、磁盘文件同步、内存对象懒释放操作。
