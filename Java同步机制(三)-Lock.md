@@ -44,7 +44,11 @@ public interface Lock {
     - Lock提供了可中断的获取锁方法，`lockInterruptibly()`和`tryLock(long time,TimeUnit unit)`。既线程在获取Lock的挂起过程中是可以响应中断的，开发者可以通过这种方法来终止获取锁。
     - Synchronized则不可以，线程在Synchronized的挂起过程中，不可响应中断操作，一旦开始，就无法停止。
 
-3. Condition机制
+1. Condition机制
+* [ ] 2. 
+
+sdasda
+* [ ] 
 
 ### 其他特点
 1. 性能
